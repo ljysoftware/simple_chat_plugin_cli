@@ -1,0 +1,34 @@
+name: Plugin Register
+
+on:
+  # 주기적 동기화
+  schedule:
+    - cron: '*/1 * * * *' # 1분마다
+
+  # 수동 실행
+  workflow_dispatch:
+
+jobs:
+  register:
+    name: Register Plugins to Backend
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout registry repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install pyyaml
+
+      - name: Register plugins
+        env:
+          PLUGIN_REPO_OWNER: ${{ vars.PLUGIN_REPO_OWNER }}
+          PLUGIN_REPO_NAME: ${{ vars.PLUGIN_REPO_NAME }}
+          PLUGIN_REPO_BRANCH: main
+          API_URL: ${{ secrets.PLUGIN_API_URL }}
+        run: python scripts/register-plugins.py
