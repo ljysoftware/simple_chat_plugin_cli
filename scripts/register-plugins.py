@@ -10,7 +10,6 @@ import os
 import json
 import urllib.request
 
-# import urllib.error  # API 호출 활성화 시 주석 해제
 from pathlib import Path
 
 import yaml
@@ -98,12 +97,6 @@ def main():
     print("🚀 Plugin Registration Started")
     print("=" * 40)
 
-    # Validate config
-    # if not CONFIG["api"]["url"] or not CONFIG["api"]["key"]:
-    #     print("❌ Missing required environment variables: API_URL, API_KEY")
-    #     exit(1)
-
-    # Load previous state
     state = load_state()
     print(f"📂 Loaded state: {len(state['plugins'])} plugin(s) tracked\n")
 
@@ -119,7 +112,6 @@ def main():
         spec = yaml.safe_load(spec_content)
         print(f"✓ Found {len(spec['plugins'])} plugin(s) in spec\n")
 
-        # Check for new/updated plugins
         plugins_to_register = []
 
         for plugin in spec["plugins"]:
@@ -138,38 +130,33 @@ def main():
 
         print(f"\n→ Registering {len(plugins_to_register)} plugin(s)...\n")
 
-        # Register changed plugins
         success_count = 0
         fail_count = 0
 
         for plugin in plugins_to_register:
             print(f"→ Registering: {plugin['name']} v{plugin['version']}")
 
-            # TODO: API 호출 활성화 시 아래 주석 해제
-            # try:
-            #     result = register_plugin(plugin)
-            #
-            #     if result["success"]:
-            #         print(f"  ✓ Registered ({result['statusCode']})")
-            #         state["plugins"][plugin["name"]] = get_plugin_hash(plugin)
-            #         success_count += 1
-            #     else:
-            #         print(f"  ✗ Failed ({result['statusCode']}): {result['data']}")
-            #         fail_count += 1
-            # except Exception as err:
-            #     print(f"  ✗ Error: {err}")
-            #     fail_count += 1
+            try:
+                result = register_plugin(plugin)
 
-            # 임시: API 없이 상태만 저장
+                if result["success"]:
+                    print(f"  ✓ Registered ({result['statusCode']})")
+                    state["plugins"][plugin["name"]] = get_plugin_hash(plugin)
+                    success_count += 1
+                else:
+                    print(f"  ✗ Failed ({result['statusCode']}): {result['data']}")
+                    fail_count += 1
+            except Exception as err:
+                print(f"  ✗ Error: {err}")
+                fail_count += 1
+
             print(f"  ✓ Marked as registered (API disabled)")
             state["plugins"][plugin["name"]] = get_plugin_hash(plugin)
             success_count += 1
 
-        # Save updated state
         save_state(state)
         print("\n💾 State saved")
 
-        # Summary
         print("\n" + "=" * 40)
         print(f"✅ Success: {success_count}")
         print(f"❌ Failed: {fail_count}")
