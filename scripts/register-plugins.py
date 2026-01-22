@@ -119,7 +119,6 @@ def main():
         spec = yaml.safe_load(spec_content)
         print(f"✓ Found {len(spec['plugins'])} plugin(s) in spec\n")
 
-        # Check for new/updated plugins
         plugins_to_register = []
 
         for plugin in spec["plugins"]:
@@ -138,7 +137,6 @@ def main():
 
         print(f"\n→ Registering {len(plugins_to_register)} plugin(s)...\n")
 
-        # Register changed plugins
         success_count = 0
         fail_count = 0
 
@@ -159,11 +157,9 @@ def main():
                 print(f"  Error: {err}")
                 fail_count += 1
 
-        # Save updated state
         save_state(state)
         print("\n💾 State saved")
 
-        # Summary
         print("\n" + "=" * 40)
         print(f"✅ Success: {success_count}")
         print(f"❌ Failed: {fail_count}")
