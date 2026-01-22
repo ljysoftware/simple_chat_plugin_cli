@@ -10,7 +10,7 @@ import os
 import json
 import urllib.request
 
-# import urllib.error  # API 호출 활성화 시 주석 해제
+import urllib.error
 from pathlib import Path
 
 import yaml
@@ -55,7 +55,7 @@ def fetch_raw_file(owner, repo, branch, file_path):
 
 def get_plugin_hash(plugin):
     return (
-        f"{plugin['name']}|{plugin['version']}|{plugin['url']}|{plugin['description']}"
+        f"{plugin['name']}|{plugin['version']}|{plugin['url']}|{plugin['description']}|{plugin.get('author', '')}"
     )
 
 
@@ -68,6 +68,7 @@ def register_plugin(plugin):
             "version": str(plugin["version"]),
             "url": plugin["url"],
             "description": plugin["description"],
+            "author": plugin.get("author", "Unknown"),
         }
     ).encode("utf-8")
 
@@ -98,10 +99,9 @@ def main():
     print("🚀 Plugin Registration Started")
     print("=" * 40)
 
-    # Validate config
-    # if not CONFIG["api"]["url"] or not CONFIG["api"]["key"]:
-    #     print("❌ Missing required environment variables: API_URL, API_KEY")
-    #     exit(1)
+    if not CONFIG["api"]["url"]:
+        print("Missing required environment variable: API_URL")
+        exit(1)
 
     # Load previous state
     state = load_state()
@@ -145,25 +145,19 @@ def main():
         for plugin in plugins_to_register:
             print(f"→ Registering: {plugin['name']} v{plugin['version']}")
 
-            # TODO: API 호출 활성화 시 아래 주석 해제
-            # try:
-            #     result = register_plugin(plugin)
-            #
-            #     if result["success"]:
-            #         print(f"  ✓ Registered ({result['statusCode']})")
-            #         state["plugins"][plugin["name"]] = get_plugin_hash(plugin)
-            #         success_count += 1
-            #     else:
-            #         print(f"  ✗ Failed ({result['statusCode']}): {result['data']}")
-            #         fail_count += 1
-            # except Exception as err:
-            #     print(f"  ✗ Error: {err}")
-            #     fail_count += 1
+            try:
+                result = register_plugin(plugin)
 
-            # 임시: API 없이 상태만 저장
-            print(f"  ✓ Marked as registered (API disabled)")
-            state["plugins"][plugin["name"]] = get_plugin_hash(plugin)
-            success_count += 1
+                if result["success"]:
+                    print(f"  Registered ({result['statusCode']})")
+                    state["plugins"][plugin["name"]] = get_plugin_hash(plugin)
+                    success_count += 1
+                else:
+                    print(f"  Failed ({result['statusCode']}): {result['data']}")
+                    fail_count += 1
+            except Exception as err:
+                print(f"  Error: {err}")
+                fail_count += 1
 
         # Save updated state
         save_state(state)
