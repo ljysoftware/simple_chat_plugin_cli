@@ -9,67 +9,63 @@ and registers only new/updated plugins to the backend API.
 import os
 import json
 import urllib.request
+from typing import TypedDict
 
+import urllib.error
 from pathlib import Path
 
 import yaml
 
 CONFIG = {
     "pluginRepo": {
-        "owner": os.environ.get("PLUGIN_REPO_OWNER", "your-org"),
+        "owner": os.environ.get("PLUGIN_REPO_OWNER", "ljysoftware"),
         "repo": os.environ.get("PLUGIN_REPO_NAME", "simple_chat_example_plugins"),
-        "branch": os.environ.get("PLUGIN_REPO_BRANCH", "examples"),
-        "specFile": "pluginspec.yml",
+        "branch": os.environ.get("PLUGIN_REPO_BRANCH", "pair-programming-with-chris" ),
     },
     "api": {
-        "url": os.environ.get("API_URL"),
+        "url": os.environ.get("API_URL", "https://simple-chat-plugin-server.onrender.com/plugins"),
     },
-    "stateFile": Path(__file__).parent.parent / ".plugin-state.json",
 }
 
+GITHUB_URL = f"https://raw.githubusercontent.com/{CONFIG['pluginRepo']["owner"]}/{CONFIG['pluginRepo']["repo"]}/{CONFIG['pluginRepo']["branch"]}"
+URL = f"{GITHUB_URL}/pluginspec.yml"
+class PluginSpec(TypedDict):
+    name: str
+    version: str
+    assets: list[str]
+    description: str
 
-def load_state():
-    try:
-        if CONFIG["stateFile"].exists():
-            return json.loads(CONFIG["stateFile"].read_text(encoding="utf-8"))
-    except Exception:
-        print("⚠ Could not load state file, starting fresh")
-    return {"plugins": {}}
+class PluginSpecs(TypedDict):
+    plugins: list[PluginSpec]
 
+def fetch_spec_file():
+    print(f"📥 Fetching Plugin Spec: {URL}")
 
-def save_state(state):
-    CONFIG["stateFile"].write_text(
-        json.dumps(state, indent=2, ensure_ascii=False), encoding="utf-8"
-    )
-
-
-def fetch_raw_file(owner, repo, branch, file_path):
-    url = f"https://raw.githubusercontent.com/{owner}/{repo}/{branch}/{file_path}"
-    print(f"📥 Fetching: {url}")
-
-    req = urllib.request.Request(url)
+    req = urllib.request.Request(URL)
     with urllib.request.urlopen(req) as response:
         return response.read().decode("utf-8")
 
 
 def get_plugin_hash(plugin):
     return (
-        f"{plugin['name']}|{plugin['version']}|{plugin['url']}|{plugin['description']}"
+        f"{plugin['name']}|{plugin['version']}|{plugin['url']}|{plugin['description']}|{plugin.get('author', '')}"
     )
 
 
-def register_plugin(plugin):
+def register_plugin(plugin: PluginSpec):
     api_url = CONFIG["api"]["url"]
 
     post_data = json.dumps(
         {
             "name": plugin["name"],
-            "version": str(plugin["version"]),
-            "url": plugin["url"],
+            "version": plugin["version"],
+            "assets": plugin["assets"],
             "description": plugin["description"],
+            "url": GITHUB_URL,
+            "author": CONFIG["pluginRepo"]["owner"],
         }
     ).encode("utf-8")
-
+    
     headers = {
         "Content-Type": "application/json",
     }
@@ -97,65 +93,37 @@ def main():
     print("🚀 Plugin Registration Started")
     print("=" * 40)
 
-    state = load_state()
-    print(f"📂 Loaded state: {len(state['plugins'])} plugin(s) tracked\n")
+    # if not CONFIG["api"]["url"]:
+    #     print("Missing required environment variable: API_URL")
+    #     exit(1)
+
+    # Load previous state
 
     try:
         # Fetch pluginspec.yml from public repo
-        spec_content = fetch_raw_file(
-            CONFIG["pluginRepo"]["owner"],
-            CONFIG["pluginRepo"]["repo"],
-            CONFIG["pluginRepo"]["branch"],
-            CONFIG["pluginRepo"]["specFile"],
-        )
+        plugin_spec = fetch_spec_file()
 
-        spec = yaml.safe_load(spec_content)
+        spec: PluginSpecs = yaml.safe_load(plugin_spec)
+
         print(f"✓ Found {len(spec['plugins'])} plugin(s) in spec\n")
-
-        plugins_to_register = []
-
-        for plugin in spec["plugins"]:
-            hash_val = get_plugin_hash(plugin)
-            previous_hash = state["plugins"].get(plugin["name"])
-
-            if previous_hash == hash_val:
-                print(f"⏭ Skipping {plugin['name']} (unchanged)")
-            else:
-                print(f"🆕 Detected change: {plugin['name']}")
-                plugins_to_register.append(plugin)
-
-        if not plugins_to_register:
-            print("\n✅ No changes detected. Nothing to register.")
-            return
-
-        print(f"\n→ Registering {len(plugins_to_register)} plugin(s)...\n")
 
         success_count = 0
         fail_count = 0
 
-        for plugin in plugins_to_register:
-            print(f"→ Registering: {plugin['name']} v{plugin['version']}")
 
+        for plugin in spec["plugins"]:
             try:
                 result = register_plugin(plugin)
 
                 if result["success"]:
-                    print(f"  ✓ Registered ({result['statusCode']})")
-                    state["plugins"][plugin["name"]] = get_plugin_hash(plugin)
+                    print(f"  Registered ({result['statusCode']})")
                     success_count += 1
                 else:
-                    print(f"  ✗ Failed ({result['statusCode']}): {result['data']}")
+                    print(f"  Failed ({result['statusCode']}): {result['data']}")
                     fail_count += 1
             except Exception as err:
-                print(f"  ✗ Error: {err}")
+                print(f"  Error: {err}")
                 fail_count += 1
-
-            print(f"  ✓ Marked as registered (API disabled)")
-            state["plugins"][plugin["name"]] = get_plugin_hash(plugin)
-            success_count += 1
-
-        save_state(state)
-        print("\n💾 State saved")
 
         print("\n" + "=" * 40)
         print(f"✅ Success: {success_count}")
