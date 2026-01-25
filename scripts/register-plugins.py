@@ -12,20 +12,27 @@ import urllib.request
 from typing import TypedDict
 
 import urllib.error
-from pathlib import Path
 
 import yaml
 
 CONFIG = {
     "pluginRepo": {
-        "owner": os.environ.get("PLUGIN_REPO_OWNER", "ljysoftware"),
-        "repo": os.environ.get("PLUGIN_REPO_NAME", "simple_chat_example_plugins"),
-        "branch": os.environ.get("PLUGIN_REPO_BRANCH", "pair-programming-with-chris" ),
+        "owner": os.environ.get("PLUGIN_REPO_OWNER"),
+        "repo": os.environ.get("PLUGIN_REPO_NAME"),
+        "branch": os.environ.get("PLUGIN_REPO_BRANCH"),
     },
     "api": {
-        "url": os.environ.get("API_URL") or "https://simple-chat-plugin-server.onrender.com/plugins",
+        "url": os.environ.get("API_URL"),
     },
 }
+
+REQUIRED_ENV_VARS = ["PLUGIN_REPO_OWNER", "PLUGIN_REPO_NAME", "PLUGIN_REPO_BRANCH"]
+
+def validate_config():
+    missing = [var for var in REQUIRED_ENV_VARS if not os.environ.get(var)]
+    if missing:
+        print(f"Missing required environment variables: {', '.join(missing)}")
+        exit(1)
 
 GITHUB_URL = f"https://raw.githubusercontent.com/{CONFIG['pluginRepo']["owner"]}/{CONFIG['pluginRepo']["repo"]}/{CONFIG['pluginRepo']["branch"]}"
 URL = f"{GITHUB_URL}/pluginspec.yml"
@@ -46,10 +53,10 @@ def fetch_spec_file():
         return response.read().decode("utf-8")
 
 
-# def get_plugin_hash(plugin):
-#     return (
-#         f"{plugin['name']}|{plugin['version']}|{plugin['url']}|{plugin['description']}|{plugin.get('author', '')}"
-#     )
+def get_plugin_hash(plugin):
+    return (
+        f"{plugin['name']}|{plugin['version']}|{plugin['url']}|{plugin['description']}|{plugin.get('author', '')}"
+    )
 
 
 def register_plugin(plugin: PluginSpec):
