@@ -23,7 +23,7 @@ CONFIG = {
         "branch": os.environ.get("PLUGIN_REPO_BRANCH", "pair-programming-with-chris" ),
     },
     "api": {
-        "url": os.environ.get("API_URL" or "https://simple-chat-plugin-server.onrender.com/plugins"),
+        "url": os.environ.get("API_URL") or "https://simple-chat-plugin-server.onrender.com/plugins",
     },
 }
 
