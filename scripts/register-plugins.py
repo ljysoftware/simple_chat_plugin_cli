@@ -23,7 +23,7 @@ CONFIG = {
         "branch": os.environ.get("PLUGIN_REPO_BRANCH", "pair-programming-with-chris" ),
     },
     "api": {
-        "url": os.environ.get("API_URL", "https://simple-chat-plugin-server.onrender.com/plugins"),
+        "url": os.environ.get("API_URL" or "https://simple-chat-plugin-server.onrender.com/plugins"),
     },
 }
 
@@ -46,10 +46,10 @@ def fetch_spec_file():
         return response.read().decode("utf-8")
 
 
-def get_plugin_hash(plugin):
-    return (
-        f"{plugin['name']}|{plugin['version']}|{plugin['url']}|{plugin['description']}|{plugin.get('author', '')}"
-    )
+# def get_plugin_hash(plugin):
+#     return (
+#         f"{plugin['name']}|{plugin['version']}|{plugin['url']}|{plugin['description']}|{plugin.get('author', '')}"
+#     )
 
 
 def register_plugin(plugin: PluginSpec):
